@@ -147,7 +147,8 @@ function Action-InteractiveKill {
     }
 
     Write-Host "--- ALL PNP DEVICES (Get-PnpDevice) ---" -ForegroundColor Cyan
-    $pnpGroups = $allPnp | Where-Object { $_.Class -ne "Bluetooth" } | Group-Object Class | Sort-Object Name
+    $safeClasses = @("Net", "PrintQueue", "SoftwareDevice")
+    $pnpGroups = $allPnp | Where-Object { $_.Class -in $safeClasses -and $_.Class -ne "Bluetooth" } | Group-Object Class | Sort-Object Name
     foreach ($group in $pnpGroups) {
         $showClass = $true
         foreach ($p in $group.Group) {
