@@ -324,6 +324,16 @@ function Action-List {
 
     Write-Host ""
     Write-Host "Adapters: $(($net).Count)  |  PnP-Net: $(($pnpNet).Count)  |  PnP-BT: $(($pnpBt).Count)  |  Printers: $(($printers).Count)" -ForegroundColor Cyan
+
+    if (Test-Path $backupFile) {
+        $backup = Import-Clixml -Path $backupFile
+        Write-Host ""
+        Write-Host "Backup exists: $($backup.Count) adapter(s) can be restored" -ForegroundColor Green
+        $backup | ForEach-Object { Write-Host "  - $($_.Name) (was $($_.Status))" -ForegroundColor DarkGreen }
+    } else {
+        Write-Host ""
+        Write-Host "No backup found. Use [1] or [3] to create one." -ForegroundColor DarkGray
+    }
     pause
 }
 
@@ -345,7 +355,8 @@ function Action-Help {
     Write-Host "    Bluetooth devices are NEVER listed (kept safe)." -ForegroundColor Gray
     Write-Host ""
     Write-Host "  [4] Restore" -ForegroundColor Green
-    Write-Host "    Re-enable adapters from backup." -ForegroundColor Gray
+    Write-Host "    Re-enable adapters from backup file (saved on [1] or [3])." -ForegroundColor Gray
+    Write-Host "    Backup is stored at: adapter_backup.xml (same folder)" -ForegroundColor Gray
     Write-Host ""
     Write-Host "  [5] Detailed List" -ForegroundColor Cyan
     Write-Host "    Full overview without changing anything." -ForegroundColor Gray
