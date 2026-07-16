@@ -127,7 +127,7 @@ function Action-InteractiveKill {
     Write-Host ""
 
     $netAdapters = Get-AllAdapters
-    $pnpNet = Get-PnpNet
+    $allPnp = Get-PnpAll
     $printers = Get-AllPrinters
     $usbDisks = Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq "USB" } | Sort-Object FriendlyName
 
@@ -145,15 +145,25 @@ function Action-InteractiveKill {
         $index++
     }
 
-    Write-Host "--- PNP NETWORK DEVICES (Get-PnpDevice -Class Net) ---" -ForegroundColor Cyan
-    foreach ($p in $pnpNet) {
-        if ($p.FriendlyName -match "(?i)bluetooth") {
-            Write-Host "  $index. [SKIPPED - BLUETOOTH] $($p.FriendlyName)" -ForegroundColor DarkGray
-        } else {
-            Write-Host "  $index. [PnP] $($p.FriendlyName) | Status: $($p.Status)" -ForegroundColor Yellow
-            $candidates += @{ Type="PnpDevice"; Object=$p; Index=$index; Name="$($p.FriendlyName) [PnP]" }
+    Write-Host "--- ALL PNP DEVICES (Get-PnpDevice) ---" -ForegroundColor Cyan
+    $pnpGroups = $allPnp | Where-Object { $_.Class -ne "Bluetooth" } | Group-Object Class | Sort-Object Name
+    foreach ($group in $pnpGroups) {
+        $showClass = $true
+        foreach ($p in $group.Group) {
+            if ($p.Class -eq "Net" -and $p.FriendlyName -match "(?i)bluetooth") {
+                Write-Host "  $index. [SKIPPED - BLUETOOTH] $($p.FriendlyName)" -ForegroundColor DarkGray
+                $index++
+                continue
+            }
+            if ($showClass) {
+                Write-Host "  [Class: $($p.Class)]" -ForegroundColor DarkCyan
+                $showClass = $false
+            }
+            $name = if ($p.FriendlyName) { $p.FriendlyName } else { $p.DeviceID }
+            Write-Host "  $index. [PnP] $name | Status: $($p.Status)" -ForegroundColor Yellow
+            $candidates += @{ Type="PnpDevice"; Object=$p; Index=$index; Name="$name [$($p.Class)]" }
+            $index++
         }
-        $index++
     }
 
     Write-Host "--- USB STORAGE (Get-Disk -BusType USB) ---" -ForegroundColor Cyan
