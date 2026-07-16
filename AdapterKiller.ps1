@@ -46,8 +46,8 @@ function Confirm-Destruction {
     Write-Host ""
     Write-Host "!!! WARNING: $ActionText !!!" -ForegroundColor Red
     Write-Host ""
-    $confirm = Read-Host "Type 'DESTROY' to confirm"
-    if ($confirm -ne "DESTROY") {
+    $confirm = Read-Host "Are you sure? (y/N)"
+    if ($confirm -ne "y" -and $confirm -ne "Y") {
         Write-Host "Cancelled." -ForegroundColor Green
         return $false
     }
