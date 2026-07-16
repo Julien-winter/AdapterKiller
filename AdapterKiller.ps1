@@ -252,17 +252,19 @@ function Action-InteractiveKill {
             }
             "UsbDisk" {
                 $d = $item.Object
-                $part = Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
-                $letter = if ($part) { $part.DriveLetter } else { "?" }
-                Write-Host "  -> USB Disk: $($d.FriendlyName) ($letter) ... " -NoNewline
+                $parts = Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
+                Write-Host "  -> USB Disk: $($d.FriendlyName) ... " -NoNewline
                 try {
-                    # Dismount volume first
-                    if ($letter -ne "?") {
-                        & mountvol "${letter}:" /d 2>&1 | Out-Null
+                    foreach ($p in $parts) {
+                        & mountvol "$($p.DriveLetter):" /d 2>&1 | Out-Null
                     }
-                    # Set disk offline
                     Set-Disk -Number $d.Number -IsOffline $true -ErrorAction Stop
-                    Write-Host "EJECTED & OFFLINE" -ForegroundColor Red; $ok++
+                    $pnpDisk = Get-PnpDevice -Class DiskDrive -ErrorAction SilentlyContinue |
+                        Where-Object { $_.FriendlyName -match [regex]::Escape($d.FriendlyName) }
+                    if ($pnpDisk) {
+                        Disable-PnpDeviceById $pnpDisk.InstanceId | Out-Null
+                    }
+                    Write-Host "EJECTED" -ForegroundColor Red; $ok++
                 } catch {
                     try {
                         Set-Disk -Number $d.Number -IsOffline $true -ErrorAction SilentlyContinue
