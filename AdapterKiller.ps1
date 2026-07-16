@@ -215,7 +215,6 @@ function Action-InteractiveKill {
     $selected | ForEach-Object { Write-Host "  - $($_.Name)" -ForegroundColor Red }
     Write-Host ""
 
-    # Backup NetAdapters that will be disabled
     $netToKill = $selected | Where-Object { $_.Type -eq "NetAdapter" } | ForEach-Object { $_.Object }
     if ($netToKill) { Backup-Adapters $netToKill }
 
@@ -259,17 +258,19 @@ function Action-InteractiveKill {
                         & mountvol "$($p.DriveLetter):" /d 2>&1 | Out-Null
                     }
                     Set-Disk -Number $d.Number -IsOffline $true -ErrorAction Stop
-                    $pnpDisk = Get-PnpDevice -Class DiskDrive -ErrorAction SilentlyContinue |
-                        Where-Object { $_.FriendlyName -match [regex]::Escape($d.FriendlyName) }
-                    if ($pnpDisk) {
-                        Disable-PnpDeviceById $pnpDisk.InstanceId | Out-Null
+                    $wmiDisk = Get-WmiObject Win32_DiskDrive -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Index -eq $d.Number }
+                    if ($wmiDisk -and $wmiDisk.PNPDeviceID) {
+                        $suffix = ($wmiDisk.PNPDeviceID -split '\\')[-1]
+                        $pnpDisk = Get-PnpDevice -ErrorAction SilentlyContinue |
+                            Where-Object { $_.InstanceId -match [regex]::Escape($suffix) }
+                        if ($pnpDisk) {
+                            & pnputil /remove-device $pnpDisk.InstanceId 2>&1 | Out-Null
+                        }
                     }
                     Write-Host "EJECTED" -ForegroundColor Red; $ok++
                 } catch {
-                    try {
-                        Set-Disk -Number $d.Number -IsOffline $true -ErrorAction SilentlyContinue
-                        Write-Host "OFFLINE" -ForegroundColor Yellow; $ok++
-                    } catch { Write-Host "FAILED" -ForegroundColor DarkRed; $fail++ }
+                    Write-Host "PARTIAL" -ForegroundColor Yellow; $ok++
                 }
             }
         }
