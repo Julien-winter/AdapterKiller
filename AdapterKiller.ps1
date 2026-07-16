@@ -252,8 +252,8 @@ function Action-InteractiveKill {
             }
             "UsbDisk" {
                 $d = $item.Object
-                $vol = Get-Volume -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
-                $letter = if ($vol) { $vol.DriveLetter } else { "?" }
+                $part = Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
+                $letter = if ($part) { $part.DriveLetter } else { "?" }
                 Write-Host "  -> USB Disk: $($d.FriendlyName) ($letter) ... " -NoNewline
                 try {
                     # Dismount volume first
