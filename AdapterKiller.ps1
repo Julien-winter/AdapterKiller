@@ -253,25 +253,57 @@ function Action-InteractiveKill {
                 $d = $item.Object
                 $parts = Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
                 Write-Host "  -> USB Disk: $($d.FriendlyName) ... " -NoNewline
-                try {
-                    foreach ($p in $parts) {
-                        & mountvol "$($p.DriveLetter):" /d 2>&1 | Out-Null
-                    }
-                    Set-Disk -Number $d.Number -IsOffline $true -ErrorAction Stop
-                    $wmiDisk = Get-WmiObject Win32_DiskDrive -ErrorAction SilentlyContinue |
-                        Where-Object { $_.Index -eq $d.Number }
-                    if ($wmiDisk -and $wmiDisk.PNPDeviceID) {
-                        $suffix = ($wmiDisk.PNPDeviceID -split '\\')[-1]
-                        $pnpDisk = Get-PnpDevice -ErrorAction SilentlyContinue |
-                            Where-Object { $_.InstanceId -match [regex]::Escape($suffix) }
-                        if ($pnpDisk) {
-                            & pnputil /remove-device $pnpDisk.InstanceId 2>&1 | Out-Null
+
+                $ejected = $false
+
+                # 1) Shell COM eject (Safely Remove Hardware method) - needs drive letters
+                foreach ($p in $parts) {
+                    try {
+                        $shell = New-Object -ComObject Shell.Application
+                        $folder = $shell.Namespace(17)
+                        if ($folder) {
+                            $item2 = $folder.ParseName("$($p.DriveLetter):")
+                            if ($item2) { $item2.InvokeVerb("Eject"); $ejected = $true }
                         }
-                    }
-                    Write-Host "EJECTED" -ForegroundColor Red; $ok++
-                } catch {
-                    Write-Host "PARTIAL" -ForegroundColor Yellow; $ok++
+                    } catch {}
                 }
+
+                # 2) PnP uninstall via pnputil (uses WMI to find correct InstanceId)
+                if (-not $ejected) {
+                    try {
+                        $wmiDisk = Get-WmiObject Win32_DiskDrive -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Index -eq $d.Number }
+                        if ($wmiDisk -and $wmiDisk.PNPDeviceID) {
+                            $pnpDisk = Get-PnpDevice -ErrorAction SilentlyContinue |
+                                Where-Object { $_.InstanceId -eq $wmiDisk.PNPDeviceID -and $_.Class -eq "DiskDrive" }
+                            if (-not $pnpDisk) {
+                                $suffix = ($wmiDisk.PNPDeviceID -split '\\')[-1]
+                                $pnpDisk = Get-PnpDevice -ErrorAction SilentlyContinue |
+                                    Where-Object { $_.InstanceId -match [regex]::Escape($suffix) }
+                            }
+                            if ($pnpDisk) {
+                                & pnputil /remove-device $pnpDisk.InstanceId 2>&1 | Out-Null
+                                if ($LASTEXITCODE -eq 0) { $ejected = $true }
+                            }
+                        }
+                    } catch {}
+                }
+
+                # 3) Fallback: mountvol + Set-Disk offline
+                if (-not $ejected) {
+                    try {
+                        foreach ($p in $parts) {
+                            & mountvol "$($p.DriveLetter):" /d 2>&1 | Out-Null
+                        }
+                        Set-Disk -Number $d.Number -IsOffline $true -ErrorAction Stop
+                        $ejected = $true
+                    } catch {
+                        try { Set-Disk -Number $d.Number -IsOffline $true -ErrorAction SilentlyContinue } catch {}
+                    }
+                }
+
+                if ($ejected) { Write-Host "EJECTED" -ForegroundColor Red; $ok++ }
+                else { Write-Host "FAILED" -ForegroundColor DarkRed; $fail++ }
             }
         }
     }
