@@ -33,6 +33,7 @@ function Get-AllAdapters { Get-NetAdapter | Sort-Object Name }
 function Get-PnpNet { Get-PnpDevice -Class Net -ErrorAction SilentlyContinue | Sort-Object FriendlyName }
 function Get-PnpBluetooth { Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Sort-Object FriendlyName }
 function Get-AllPrinters { Get-Printer -ErrorAction SilentlyContinue | Sort-Object Name }
+function Get-PnpAll { Get-PnpDevice -ErrorAction SilentlyContinue | Sort-Object Class, FriendlyName }
 
 function Backup-Adapters {
     param($Adapters)
