@@ -42,13 +42,20 @@ The interactive mode scans multiple sources and lets you choose:
 --- NETWORK ADAPTERS (Get-NetAdapter) ---
   1. Ethernet | Realtek ... | Disconnected
   2. WLAN | RZ616 ... | Up
---- PNP NETWORK DEVICES (Get-PnpDevice -Class Net) ---
+--- ALL PNP DEVICES (Get-PnpDevice) ---
+  [Class: Net]
   3. Microsoft Wi-Fi Direct Virtual Adapter #3
   4. Remote NDIS Compatible Device
+  5. Realtek Gaming 2.5GbE Family Controller
+  [Class: PrintQueue]
+  6. Druckwarteschlange
+  [Class: HIDClass]
+  7. HID-konforme Maus
+  8. HID-Tastatur
 --- USB STORAGE (Get-Disk -BusType USB) ---
-  5. USB: SanDisk Extreme (120.00 GB)
+  9. USB: SanDisk Extreme (120.00 GB)
 --- PRINTERS (Get-Printer) ---
-  6. Microsoft Print to PDF
+  10. Microsoft Print to PDF
 ```
 
 Enter numbers (comma/space separated) or `ALL` to select everything.

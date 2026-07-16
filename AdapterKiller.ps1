@@ -361,7 +361,8 @@ function Action-Help {
     Write-Host ""
     Write-Host "  [3] Interactive Kill" -ForegroundColor Magenta
     Write-Host "    Choose EXACTLY what to destroy from a numbered list." -ForegroundColor Gray
-    Write-Host "    Enter numbers (comma/space) or 'ALL'." -ForegroundColor Gray
+    Write-Host "    Shows ALL PnP devices (grouped by class), NetAdapters," -ForegroundColor Gray
+    Write-Host "    USB drives, printers. Enter numbers or 'ALL'." -ForegroundColor Gray
     Write-Host "    Bluetooth devices are NEVER listed (kept safe)." -ForegroundColor Gray
     Write-Host ""
     Write-Host "  [4] Restore" -ForegroundColor Green
