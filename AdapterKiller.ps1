@@ -129,6 +129,7 @@ function Action-InteractiveKill {
     $netAdapters = Get-AllAdapters
     $pnpNet = Get-PnpNet
     $printers = Get-AllPrinters
+    $usbDisks = Get-Disk -ErrorAction SilentlyContinue | Where-Object { $_.BusType -eq "USB" } | Sort-Object FriendlyName
 
     $candidates = @()
     $index = 1
@@ -152,6 +153,15 @@ function Action-InteractiveKill {
             Write-Host "  $index. [PnP] $($p.FriendlyName) | Status: $($p.Status)" -ForegroundColor Yellow
             $candidates += @{ Type="PnpDevice"; Object=$p; Index=$index; Name="$($p.FriendlyName) [PnP]" }
         }
+        $index++
+    }
+
+    Write-Host "--- USB STORAGE (Get-Disk -BusType USB) ---" -ForegroundColor Cyan
+    foreach ($d in $usbDisks) {
+        $size = "{0:N2} GB" -f ($d.Size / 1GB)
+        $partStyle = if ($d.PartitionStyle) { $d.PartitionStyle } else { "RAW" }
+        Write-Host "  $index. [USB] $($d.FriendlyName) | $size | $partStyle" -ForegroundColor Yellow
+        $candidates += @{ Type="UsbDisk"; Object=$d; Index=$index; Name="USB: $($d.FriendlyName) ($size)" }
         $index++
     }
 
@@ -227,6 +237,26 @@ function Action-InteractiveKill {
                 Write-Host "  -> Printer: $($pr.Name) ... " -NoNewline
                 try { Remove-Printer -Name $pr.Name -Confirm:$false; Write-Host "REMOVED" -ForegroundColor Red; $ok++ }
                 catch { Write-Host "FAILED" -ForegroundColor DarkRed; $fail++ }
+            }
+            "UsbDisk" {
+                $d = $item.Object
+                $vol = Get-Volume -DiskNumber $d.Number -ErrorAction SilentlyContinue | Where-Object { $_.DriveLetter }
+                $letter = if ($vol) { $vol.DriveLetter } else { "?" }
+                Write-Host "  -> USB Disk: $($d.FriendlyName) ($letter) ... " -NoNewline
+                try {
+                    # Dismount volume first
+                    if ($letter -ne "?") {
+                        & mountvol "${letter}:" /d 2>&1 | Out-Null
+                    }
+                    # Set disk offline
+                    Set-Disk -Number $d.Number -IsOffline $true -ErrorAction Stop
+                    Write-Host "EJECTED & OFFLINE" -ForegroundColor Red; $ok++
+                } catch {
+                    try {
+                        Set-Disk -Number $d.Number -IsOffline $true -ErrorAction SilentlyContinue
+                        Write-Host "OFFLINE" -ForegroundColor Yellow; $ok++
+                    } catch { Write-Host "FAILED" -ForegroundColor DarkRed; $fail++ }
+                }
             }
         }
     }
